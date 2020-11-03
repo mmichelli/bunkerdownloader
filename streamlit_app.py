@@ -4,10 +4,8 @@ import pandas as pd
 from pymongo import MongoClient
 import datetime
 import base64
+import ssl
 from io import BytesIO
-
-
-
 
 @st.cache
 def get_companies():
@@ -54,13 +52,12 @@ def get_table_download_link(df):
 
 st.sidebar.title("Bunker Downloader")
 st.sidebar.markdown("### Connect:")
-url = st.sidebar.text_input("URL", value="10.100.42.216")
-username = st.sidebar.text_input("Username")
-password = st.sidebar.text_input("Password", type='password')
+url = st.sidebar.text_input("Connection string")
 
-if url and username and password:
-    ecomate = MongoClient(f"mongodb://{username}:{password}@{url}/ecomate?authSource=admin")
-    db = ecomate.get_database()
+if url:
+    client = MongoClient(url, ssl_cert_reqs=ssl.CERT_NONE)
+    db = client.get_database()
+    print(db)
 else:
     db = None
 if(db):
@@ -70,7 +67,7 @@ if(db):
     company = st.sidebar.selectbox("Choose a company", companies, format_func=lambda v: v["name"])
     vessels_list = get_vessels(company["pkId"])
     vessel = st.sidebar.selectbox("Choose a Vessel",
-                              vessels_list, format_func=lambda v: v["name"])
+                                  vessels_list, format_func=lambda v: v["name"])
     bunkers = get_bunkerItems()
     bunker = st.sidebar.selectbox("Choose a bunker", bunkers, format_func=lambda v: v["startTime"])
     bunker_measurements = get_bunkerValues(bunker["pkId"])
