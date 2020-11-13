@@ -13,15 +13,15 @@ def get_companies():
 @st.cache
 def get_vessels(company_id):
     return list(db.Vessel.find({"companyId": company_id}))
-@st.cache
-def get_bunkerItems():
-    return list(db.BunkerItem.find().sort("startTime", -1))
 
-@st.cache
+def get_bunkerItems(vessel_id):
+    return list(db.BunkerItem.find({"vesselId": vessel_id}).sort("startTime", -1))
+
+
 def get_FuelType(vessel_id, fuel_id):
     return list(db.FuelType.find({"vesselId": vessel_id, "pkId": fuel_id}))
 
-@st.cache
+
 def get_bunkerValues(bunkerItemId):
     return list(db.BunkerMeasurement.aggregate(
         [
@@ -68,23 +68,23 @@ if(db):
     vessels_list = get_vessels(company["pkId"])
     vessel = st.sidebar.selectbox("Choose a Vessel",
                                   vessels_list, format_func=lambda v: v["name"])
-    bunkers = get_bunkerItems()
+    bunkers = get_bunkerItems(vessel["pkId"])
     bunker = st.sidebar.selectbox("Choose a bunker", bunkers, format_func=lambda v: v["startTime"])
     bunker_measurements = get_bunkerValues(bunker["pkId"])
     out = {m["type"]: m["values"] for m in bunker_measurements}
     index = bunker['startTime'] + np.arange(len(out["MassFlow"])) * datetime.timedelta(seconds=1)
-    df = pd.DataFrame(out, index=index)
+    data_frame = pd.DataFrame(out, index=index)
 
     st.markdown(f"### {vessel['name']}")
     st.markdown(f"**{bunker['startTime'].strftime('%d %b %Y, %H:%M')}** - **{bunker['endTime'].strftime('%d %b %Y, %H:%M')}**")
 
-    st.markdown(get_table_download_link(df), unsafe_allow_html=True)
+    st.markdown(get_table_download_link(data_frame), unsafe_allow_html=True)
 
     filtered = [{"Key": k, "Value": bunker[k]} for k in bunker.keys() if "_" not in k]
     bunker_pd = pd.DataFrame(filtered)
 
     st.markdown("### Bunker Data")
-    st.line_chart(df)
+    st.line_chart(data_frame)
 
     st.markdown("### Bunker details")
     bunker_pd
@@ -101,4 +101,4 @@ if(db):
     st.markdown("---")
     for bm in bunker_measurements:
         st.markdown(f"### {bm['type']}")
-        st.line_chart(df[bm["type"]])
+        st.line_chart(data_frame[bm["type"]])
